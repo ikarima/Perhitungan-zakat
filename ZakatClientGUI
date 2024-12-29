@@ -1,0 +1,153 @@
+second account, [29/12/2024 20:49]
+import javax.swing.*;
+import java.awt.*;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.text.NumberFormat;
+import java.util.Locale;
+
+public class ZakatClientGUI extends JFrame {
+    private ZakatInterface zakatService;
+    private JTextField tfPenghasilan;
+    private JTextArea taHasil;
+    private JButton btnHitung, btnReset;
+    private NumberFormat formatRupiah;
+
+    public ZakatClientGUI() {
+        super("Kalkulator Zakat Penghasilan");
+        initComponents();
+        connectToServer();
+    }
+
+    private void initComponents() {
+        formatRupiah = NumberFormat.getCurrencyInstance(new Locale("id", "ID"));
+        
+        // Panel Input
+        JPanel inputPanel = new JPanel(new GridBagLayout());
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        GridBagConstraints gbc = new GridBagConstraints();
+        
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.insets = new Insets(5, 5, 5, 5);
+        inputPanel.add(new JLabel("Penghasilan Bulanan:"), gbc);
+
+        tfPenghasilan = new JTextField(15);
+        gbc.gridx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        inputPanel.add(tfPenghasilan, gbc);
+
+        // Panel Tombol
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        btnHitung = new JButton("Hitung Zakat");
+        btnReset = new JButton("Reset");
+        
+        btnHitung.setBackground(new Color(46, 204, 113));
+        btnHitung.setForeground(Color.RED);
+        btnReset.setBackground(new Color(231, 76, 60));
+        btnReset.setForeground(Color.RED);
+        
+        buttonPanel.add(btnHitung);
+        buttonPanel.add(btnReset);
+
+        // Text Area Hasil
+        taHasil = new JTextArea(10, 30);
+        taHasil.setEditable(false);
+        taHasil.setBackground(new Color(236, 240, 241));
+        taHasil.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        JScrollPane scrollPane = new JScrollPane(taHasil);
+
+        // Layout Utama
+        setLayout(new BorderLayout());
+        add(inputPanel, BorderLayout.NORTH);
+        add(scrollPane, BorderLayout.CENTER);
+        add(buttonPanel, BorderLayout.SOUTH);
+
+        // Event Handlers
+        btnHitung.addActionListener(e -> hitungZakat());
+        btnReset.addActionListener(e -> reset());
+
+        // Window Settings
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        pack();
+        setLocationRelativeTo(null);
+        setResizable(false);
+    }
+
+    private void connectToServer() {
+        try {
+            Registry registry = LocateRegistry.getRegistry("172.125.3.234", 1099);
+            zakatService = (ZakatInterface) registry.lookup("ZakatService");
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Gagal terhubung ke server: " + e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void hitungZakat() {
+        try {
+            double penghasilanBulanan = Double.parseDouble(tfPenghasilan.getText());
+            double totalPendapatan = zakatService.hitungTotalPendapatan(penghasilanBulanan);
+            double nisab = zakatService.hitungNisab();
+            double zakatTahunan = zakatService.hitungZakat(totalPendapatan);
+            boolean wajibZakat = zakatService.cekWajibZakat(totalPendapatan, nisab);
+
+            StringBuilder hasil = new StringBuilder();
+            hasil.append("=== HASIL PERHITUNGAN ZAKAT ===\n\n");
+            hasil.append("Total Pendapatan Setahun: ").append(formatRupiah.format(totalPendapatan)).append("\n");
+            hasil.append("Nisab: ").append(formatRupiah.format(nisab)).append("\n");
+            hasil.append("Status: ").append(wajibZakat ? "Wajib Zakat" : "Tidak Wajib Zakat").append("\n\n");
+
+second account, [29/12/2024 20:49]
+if (wajibZakat) {
+                hasil.append("Zakat yang harus dibayar: ").append(formatRupiah.format(zakatTahunan)).append("\n");
+                
+                int konfirmasi = JOptionPane.showConfirmDialog(this,
+                    "Apakah Anda sudah membayar zakat sebesar " + formatRupiah.format(zakatTahunan) + "?",
+                    "Konfirmasi Pembayaran",
+                    JOptionPane.YES_NO_OPTION);
+                
+                if (konfirmasi == JOptionPane.YES_OPTION) {
+                    hasil.append("\nStatus Pembayaran: Sudah dibayar\n");
+                    hasil.append("Jazakallahu Khairan atas pembayaran zakatnya");
+                } else {
+                    hasil.append("\nStatus Pembayaran: Belum dibayar\n");
+                    hasil.append("Mohon segera membayar zakat Anda");
+                }
+            }
+
+            taHasil.setText(hasil.toString());
+
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,
+                "Mohon masukkan angka yang valid",
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Terjadi kesalahan: " + e.getMessage(),
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void reset() {
+        tfPenghasilan.setText("");
+        taHasil.setText("");
+    }
+
+    public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        SwingUtilities.invokeLater(() -> {
+            new ZakatClientGUI().setVisible(true);
+        });
+    }
+}
