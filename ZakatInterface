@@ -1,0 +1,9 @@
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface ZakatInterface extends Remote {
+    double hitungTotalPendapatan(double penghasilanBulanan) throws RemoteException;
+    double hitungNisab() throws RemoteException;
+    double hitungZakat(double totalPendapatan) throws RemoteException;
+    boolean cekWajibZakat(double totalPendapatan, double nisab) throws RemoteException;
+}
